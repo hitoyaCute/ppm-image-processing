@@ -15,140 +15,178 @@ sin(d);
 #include <cmath>
 #include <array>
 
+template<typename d> struct vect4;
 template <typename d, int N>
 struct vect {
     std::array<d,N> data = {0};
-    vect() = default;
-    vect(const std::array<d, N>& inp): data{inp}{};
+    constexpr vect() = default;
+    constexpr vect(const std::array<d, N>& inp):data{inp} {}
+    // constexpr vect(const vect<d,N>& inp): data{inp.data}{}
+    
+    template <class... Args>
+    requires (sizeof... (Args) == N)
+    constexpr vect(Args... inp): data{static_cast<d>(inp)...}{}
 
-    // vect<d,N>& operator= (const vect<d,N>& rhs) {
-    //     this->data = rhs.data;
-    //     return this;
+    // constexpr inline vect<d,N>& operator= (const vect<d,N>& rhs) {
+    //     data = rhs.data;
+    //     return *this;
     // }
 
-    #define op(d,N,o) vect<d,N> operator o(const d& rhs) {\
+    #define op(o) constexpr inline vect<d,N> operator o(const d rhs) const noexcept {\
         vect<d,N> outp;\
-        for (int i{0}; i < N; i++){\
+        for (int i{0}; i < N; ++i){\
             outp.data[i] = data[i] o rhs;\
         }\
         return outp;\
     }
-    #define opf(d,N,o) friend vect<d,N> operator o (d lhs, const vect<d,N>& inp) {\
+    #define opf(o) friend constexpr inline vect<d,N> operator o (const d lhs, const vect<d,N>& inp) noexcept{\
         vect<d,N> outp;\
-        for (int i{0}; i < N; i++){\
+        for (int i{0}; i < N; ++i){\
             outp.data[i] = lhs o inp.data[i];\
         }\
         return outp;\
     }
-    #define mop(d,N,o) vect<d, N> operator o(const vect<d, N>& rhs) {\
+    #define mop(o) constexpr inline vect<d, N> operator o(const vect<d, N>& rhs) const noexcept {\
         vect<d, N> outp;\
-        for (int i{0}; i < N; i++){\
+        for (int i{0}; i < N; ++i){\
             outp.data[i] = data[i] o rhs.data[i];\
         }\
         return outp;\
     }
-    #define eop(d, N, o) vect<d, N>& operator o##=(const d& rhs) {\
-        for (int i{0}; i< N; i++) {\
+    #define eop(o) constexpr inline vect<d, N>& operator o##=(const d rhs) {\
+        for (int i{0}; i< N; ++i) {\
             this->data[i] o##= rhs;\
         }\
         return *this;\
     }
-    #define eoop(d, N, o) vect<d, N>& operator o##=(const vect<d,N>& rhs) {\
-        for (int i{0}; i< N; i++) {\
+    #define eoop(o) constexpr inline vect<d, N>& operator o##=(const vect<d,N>& rhs) {\
+        for (int i{0}; i< N; ++i) {\
             this->data[i] o##= rhs.data[i];\
         }\
         return *this;\
     }
 
-    #define allOp(d,N,o) op(d,N,o)\
-    opf(d,N,o)\
-    mop(d,N,o)\
-    eop(d,N,o)\
-    eoop(d,N,o)
+    #define allOp(o) op(o)\
+    opf(o)\
+    mop(o)\
+    eop(o)\
+    eoop(o)
 
-    allOp(d, N, +);
-    allOp(d, N, -);
-    allOp(d, N, *);
-    allOp(d, N, /);
+    allOp(+);
+    allOp(-);
+    allOp(*);
+    allOp(/);
 
     #undef opf
     #undef op
     #undef mop
     #undef allOp
     
-    const d& x() const {return data[0];}
-    d& x() {return data[0];}
-    const d& y() const {return data[1];}
-    d& y() {return data[1];}
-    
-    d& h() {return this->data[3];}
+    constexpr inline d& x() noexcept {return data[0];}
+    constexpr inline const d& x() const noexcept {return data[0];}
 
-    vect<d,2> xx(){return {{data[0],data[0]}};}
-    vect<d,2> yy(){return {{data[1],data[1]}};}
-    vect<d,2> yx(){return {{data[1],data[0]}};}
-    vect<d,2> xy(){return {{data[0],data[1]}};}
-    vect<d,4> xyyx(){return {{data[0],data[1],data[0],data[1]}};}
+    constexpr inline d& y() noexcept {return data[1];}
+    constexpr inline const d& y() const noexcept {return data[0];}
 
+    vect<d,2> xx() const {return vect<d,2>{std::array{data[0],data[0]}};}
+    vect<d,2> yy() const {return vect<d,2>{std::array{data[1],data[1]}};}
+    vect<d,2> yx() const {return vect<d,2>{std::array{data[1],data[0]}};}
+    vect<d,2> xy() const {return vect<d,2>{std::array{data[0],data[1]}};}
+    vect4<d> xyyx() const {return {std::array{data[0],data[1],data[0],data[1]}};}
     
 };
 
 
-template <typename d, int N>
-d dot(const vect<d, N>& a, const vect<d, N>& b) {
-    return a.x()*b.x() + a.y()*b.y();
+#define mfuncvect(size) template <typename d>\
+constexpr inline d dot(const vect<d,size>& a, const vect<d,size>& b) noexcept {\
+    d sum = 0;\
+    for (int i = 0; i < size; ++i)\
+        sum += a.data[i] * b.data[i];\
+    return sum;\
+}\
+template <typename d>\
+constexpr inline vect##size<d> sin(const vect<d,size>& obj) noexcept {\
+    vect##size<d> outp;\
+    for (int i{0}; i < size; i++) {\
+        outp.data[i] = std::sin(obj.data[i]);\
+    }\
+    return outp;\
+}\
+template <typename d>\
+constexpr inline vect##size<d> cos(const vect<d,size>& obj) noexcept {\
+    vect##size<d> outp;\
+    for (int i{0}; i < size; i++) {\
+        outp.data[i] = std::cos(obj.data[i]);\
+    }\
+    return outp;\
+}\
+template <typename d>\
+constexpr inline vect##size<d> exp(const vect<d,size>& obj) noexcept {\
+    vect##size<d> outp;\
+    for (int i{0}; i < size; i++) {\
+        outp.data[i] = std::exp(obj.data[i]);\
+    }\
+    return outp;\
+}\
+template <typename d>\
+constexpr inline vect##size<d> tanh(const vect<d,size>& obj) noexcept {\
+    vect##size<d> outp;\
+    for (int i{0}; i < size; i++) {\
+        outp.data[i] = std::tanh(obj.data[i]);\
+    }\
+    return outp;\
 }
-template <typename d, int N>
-vect<d,N> sin(const vect<d, N>& obj){
-    vect<d,N> outp;
-    for (int i{0}; i < N; i++) {
-        outp.data[i] = std::sin(obj.data[i]);
-    }
-    return outp;
-}
-template <typename d, int N>
-vect<d,N> cos(const vect<d, N>& obj){
-    vect<d,N> outp;
-    for (int i{0}; i < N; i++) {
-        outp.data[i] = std::cos(obj.data[i]);
-    }
-    return outp;
-}
-template <typename d, int N>
-vect<d,N> exp(const vect<d, N>& obj){
-    vect<d,N> outp;
-    for (int i{0}; i < N; i++) {
-        outp.data[i] = std::exp(obj.data[i]);
-    }
-    return outp;
-}
-template <typename d, int N>
-vect<d,N> tanh(const vect<d, N>& obj){
-    vect<d,N> outp;
-    for (int i{0}; i < N; i++) {
-        outp.data[i] = std::tanh(obj.data[i]);
-    }
-    return outp;
-}
-
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////
 template <typename d>
 using vect2 = vect<d, 2>;
+////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+mfuncvect(2);
+
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
 template <typename d>
 struct vect3 : vect<d,3>{
-    vect3():vect<d, 3>(){}
-    vect3(const std::array<d, 3>& inp):vect<d, 3>{inp}{}
-    d& z() {return this->data[2];}
+    constexpr vect3():vect<d, 3>(){}
+    constexpr vect3(const std::array<d, 3>& inp):vect<d, 3>{inp}{}
+    // constexpr vect3(const vect<d,3>& inp):vect<d, 3>{inp.data}{}
+
+    constexpr vect3(d x, d y, d z): vect<d, 4>{x,y,z}{}
+
+    constexpr inline d& z() noexcept {return this->data[1];}
+    constexpr inline const d& z() const noexcept {return this->data[0];}
 };
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+mfuncvect(3);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
 template <typename d>
-struct vect4 :vect<d, 4>{
-    vect4():vect<d, 4>(){}
-    vect4(const std::array<d, 4>& inp):vect<d, 4>{inp}{}
-    vect4(const vect<d,4>& inp):vect<d, 4>{inp.data}{}
-    d& z() {return this->data[2];}
-    d& h() {return this->data[3];}
+struct vect4 : vect<d, 4>{
+    constexpr vect4():vect<d, 4>{}{}
+    constexpr vect4(const std::array<d, 4>& inp):vect<d, 4>{inp}{}
+    // constexpr vect4(const vect<d,4>& inp):vect<d, 4>{inp.data}{}
+
+    constexpr vect4(d x, d y, d z, d h): vect<d, 4>{x,y,z,h}{}
+
+    constexpr inline d& z() noexcept {return this->data[1];}
+    constexpr inline const d& z() const noexcept {return this->data[0];}
+
+    constexpr inline d& h() noexcept {return this->data[3];}
+    constexpr inline const d& h() const noexcept {return this->data[0];}
 };
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+mfuncvect(4);
 
 using vec2f = vect2<float>;
 using vec2i = vect2<int>;
 using vec2d = vect2<double>;
+
+using vec3f = vect3<float>;
+using vec3i = vect3<int>;
+using vec3d = vect3<double>;
+
+using vec4f = vect4<float>;
+using vec4i = vect4<int>;
+using vec4d = vect4<double>;
+
+
