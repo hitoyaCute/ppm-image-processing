@@ -3,7 +3,5 @@ using ppm to process a immage without GL following the video from Tsoding : http
 
 
 
-
-
-https://github.com/user-attachments/assets/1d05c270-cf3f-43e0-ac33-450fa959eeab
+![output](https://github.com/user-attachments/assets/3936f468-9df1-48d5-be77-180aadcd0486)
 
